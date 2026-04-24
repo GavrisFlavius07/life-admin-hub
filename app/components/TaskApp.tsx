@@ -1,26 +1,85 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import type { Task } from '@/app/lib/types';
-import { useLocalStorageTasks } from '@/app/hooks/useLocalStorageTasks';
 import TaskInput from './TaskInput';
 import TaskList from '@/app/components/TaskList';
 
 export default function TaskApp() {
-  const { tasks, setTasks } = useLocalStorageTasks();
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
-  const addTask = (taskText: string, dueDate?: Date) => {
-    const newTask: Task = {
-      id: Date.now().toString(),
-      text: taskText,
-      dueDate: dueDate || null,
-      createdAt: new Date(),
-    };
-    setTasks([newTask, ...tasks]);
-  };
+  useEffect(() => {
+    loadTasks();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const deleteTask = (id: string) => {
-    setTasks(tasks.filter((task) => task.id !== id));
-  };
+  async function loadTasks() {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/tasks', { credentials: 'include' });
+      if (res.status === 401) {
+        router.replace('/login');
+        return;
+      }
+      const data = await res.json();
+      if (!data.ok) return;
+      const parsed: Task[] = data.tasks.map((t: any) => ({
+        id: t.id,
+        text: t.text,
+        dueDate: t.dueDate ? new Date(t.dueDate) : null,
+        createdAt: new Date(t.createdAt),
+      }));
+      setTasks(parsed);
+    } catch (err) {
+      console.error('Failed loading tasks', err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function addTask(taskText: string, dueDate?: Date) {
+    try {
+      const res = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ text: taskText, dueDate: dueDate ? dueDate.toISOString() : null }),
+      });
+      if (res.status === 401) {
+        router.replace('/login');
+        return;
+      }
+      const data = await res.json();
+      if (data.ok && data.task) {
+        const t = data.task;
+        setTasks((prev) => [
+          { id: t.id, text: t.text, dueDate: t.dueDate ? new Date(t.dueDate) : null, createdAt: new Date(t.createdAt) },
+          ...prev,
+        ]);
+      }
+    } catch (err) {
+      console.error('Add task failed', err);
+    }
+  }
+
+  async function deleteTask(id: string) {
+    try {
+      const res = await fetch(`/api/tasks/${id}`, { method: 'DELETE', credentials: 'include' });
+      if (res.status === 401) {
+        router.replace('/login');
+        return;
+      }
+      const data = await res.json();
+      if (data.ok) setTasks((prev) => prev.filter((t) => t.id !== id));
+    } catch (err) {
+      console.error('Delete failed', err);
+    }
+  }
+
+  if (loading) return <div className="p-4">Loading...</div>;
 
   return (
     <div className="max-w-3xl mx-auto">

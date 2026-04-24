@@ -16,7 +16,13 @@ export async function middleware(req: NextRequest) {
 
   const token = tokenFromCookie ?? tokenFromHeader;
 
+  // If no token present and request is for a page route, redirect to /login
+  const isPageRequest = req.nextUrl.pathname && !req.nextUrl.pathname.startsWith('/api');
   if (!token) {
+    if (isPageRequest) {
+      const loginUrl = new URL('/login', req.url);
+      return NextResponse.redirect(loginUrl);
+    }
     return new NextResponse(JSON.stringify({ ok: false, error: 'Unauthorized' }), {
       status: 401,
       headers: { 'content-type': 'application/json' },
@@ -46,6 +52,13 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next({ request: { headers: requestHeaders } });
   } catch (err) {
     console.error('JWT verification failed in middleware', err);
+    // If this was a page navigation, redirect to login instead of returning JSON
+    const isPageRequest = req.nextUrl.pathname && !req.nextUrl.pathname.startsWith('/api');
+    if (isPageRequest) {
+      const loginUrl = new URL('/login', req.url);
+      return NextResponse.redirect(loginUrl);
+    }
+
     return new NextResponse(JSON.stringify({ ok: false, error: 'Invalid token' }), {
       status: 401,
       headers: { 'content-type': 'application/json' },
@@ -54,5 +67,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/api/tasks/:path*'],
+  matcher: ['/', '/api/tasks/:path*', '/dashboard', '/dashboard/:path*'],
 };

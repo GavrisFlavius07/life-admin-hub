@@ -21,10 +21,10 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
 }
 
 /** Generate an auth token (JWT/session). */
-export function generateToken(payload: object): string {
+export function generateToken(payload: Record<string, unknown>): string {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
     throw new Error('JWT secret not configured (process.env.JWT_SECRET)');
   }
-  return jwt.sign(payload as any, secret, { expiresIn: '1h' });
+  return jwt.sign(payload as jwt.JwtPayload, secret, { expiresIn: '1h' });
 }
