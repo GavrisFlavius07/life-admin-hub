@@ -1,4 +1,3 @@
-# Life Admin Hub 🚀
 
 Simple web app to manage tasks and life admin stuff.
 
@@ -11,6 +10,3 @@ Simple web app to manage tasks and life admin stuff.
 
 Clone the repo:
 
-```bash
-git clone https://github.com/TUO_USERNAME/life-admin-hub.git
-cd life-admin-hub
